@@ -115,7 +115,7 @@ async def async_setup_entry(
             VwIdSensor(coordinator, api.vin, "Unit In Car", '', coordinator.data['data']['climatisationSettings']['unitInCar'], None),
             VwIdSensor(coordinator, api.vin, "Climatisation Without External Power", '', coordinator.data['data']['climatisationSettings']['climatisationWithoutExternalPower'], None),  
             VwIdSensor(coordinator, api.vin, "Climatization At Unlock", '', coordinator.data['data']['climatisationSettings']['climatizationAtUnlock'], None),
-            VwIdSensor(coordinator, api.vin, "WindowHeating Enabled", '', coordinator.data['data']['climatisationSettings']['windowHeatingEnabled'], None),  
+            VwIdSensor(coordinator, api.vin, "Window Heating Enabled", '', coordinator.data['data']['climatisationSettings']['windowHeatingEnabled'], None),  
             VwIdSensor(coordinator, api.vin, "Zone Front Left Enabled", '', coordinator.data['data']['climatisationSettings']['zoneFrontLeftEnabled'], None),
             VwIdSensor(coordinator, api.vin, "Zone Front Right Enabled", '', coordinator.data['data']['climatisationSettings']['zoneFrontRightEnabled'], None),  
         ]
@@ -125,7 +125,7 @@ class VwIdSensor(CoordinatorEntity):
     def __init__(self, coordinator, vin, name, unit_of_measurement, apiData, device_class):
         """Pass coordinator to CoordinatorEntity."""
         super().__init__(coordinator)
-        self._name = name
+        self._name = 'Volkswagen ID' + ' ' + name
         self._state = apiData
         self._available = True
         self.attrs = {'vin': vin}
