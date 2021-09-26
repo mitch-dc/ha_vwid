@@ -18,6 +18,8 @@ from homeassistant.const import (
     CONF_NAME,
     CONF_PASSWORD,
     DEVICE_CLASS_BATTERY,
+    DEVICE_CLASS_POWER,
+    DEVICE_CLASS_TEMPERATURE,
 )
 from homeassistant.helpers.typing import (
     ConfigType,
@@ -29,8 +31,17 @@ from .const import (
     CONF_VIN
 )
 
+import async_timeout
+
+from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
+
+
 _LOGGER = logging.getLogger(__name__)
-SCAN_INTERVAL = timedelta(minutes=10)
 
 async def async_setup_entry(
     hass: core.HomeAssistant,
@@ -39,24 +50,91 @@ async def async_setup_entry(
 ):
     """Setup sensors from a config entry created in the integrations UI."""
     config = hass.data[DOMAIN][config_entry.entry_id]
+
     session = async_get_clientsession(hass)
     api = vwid(session)
     api.set_credentials(config[CONF_NAME], config[CONF_PASSWORD])
     api.set_vin(config[CONF_VIN])
-    sensor = VwidSensor(api)
-    async_add_entities([sensor], update_before_add=True)
 
-class VwidSensor(Entity):
-    def __init__(self, api):
-        super().__init__()
-        self.api = api
-        self._name = 'State of charge'
-        self._state = None
+
+    async def async_update_data():
+        try:
+            # Note: asyncio.TimeoutError and aiohttp.ClientError are already
+            # handled by the data update coordinator.
+            async with async_timeout.timeout(30):
+
+                data = await api.get_status()
+                if (data):
+                    _LOGGER.warn(data)
+                    return data
+                else:
+                    _LOGGER.exception("Error retrieving data")
+        except ApiAuthError as err:
+            # Raising ConfigEntryAuthFailed will cancel future updates
+            # and start a config flow with SOURCE_REAUTH (async_step_reauth)
+            raise ConfigEntryAuthFailed from err
+        except ApiError as err:
+            raise UpdateFailed(f"Error communicating with API: {err}")
+
+    coordinator = DataUpdateCoordinator(
+        hass,
+        _LOGGER,
+        name = "VW ID Sensor",
+        update_method = async_update_data,
+        update_interval = timedelta(seconds=30),
+    )
+
+    # Fetch initial data so we have data when entities subscribe
+    await coordinator.async_config_entry_first_refresh()
+
+    _LOGGER.warn(coordinator.data['data']['batteryStatus']['currentSOC_pct'])
+    async_add_entities(
+        [
+            VwIdSensor(coordinator, api.vin, "State Of Charge", '%', coordinator.data['data']['batteryStatus']['currentSOC_pct'], DEVICE_CLASS_BATTERY),
+            VwIdSensor(coordinator, api.vin, "Current Range In KM", 'km', coordinator.data['data']['batteryStatus']['cruisingRangeElectric_km'], None),
+            
+            VwIdSensor(coordinator, api.vin, "Remaining Charging Time", 'minutes', coordinator.data['data']['chargingStatus']['remainingChargingTimeToComplete_min'], None),
+            VwIdSensor(coordinator, api.vin, "Charging State", '', coordinator.data['data']['chargingStatus']['chargingState'], None),
+            VwIdSensor(coordinator, api.vin, "Charge Mode", '', coordinator.data['data']['chargingStatus']['chargeMode'], None),
+            VwIdSensor(coordinator, api.vin, "Charge Power In kW", 'kW', coordinator.data['data']['chargingStatus']['chargePower_kW'], DEVICE_CLASS_POWER),
+            VwIdSensor(coordinator, api.vin, "Charge Rate In km/h", 'km/h', coordinator.data['data']['chargingStatus']['chargeRate_kmph'], None),
+
+            VwIdSensor(coordinator, api.vin, "Max Charge Current AC", '', coordinator.data['data']['chargingSettings']['maxChargeCurrentAC'], None),
+            VwIdSensor(coordinator, api.vin, "Auto Unlock Plug When Charged", '', coordinator.data['data']['chargingSettings']['autoUnlockPlugWhenCharged'], None),
+            VwIdSensor(coordinator, api.vin, "Target State Of Charge", '%', coordinator.data['data']['chargingSettings']['targetSOC_pct'], DEVICE_CLASS_BATTERY),
+
+            VwIdSensor(coordinator, api.vin, "Max Charge Current AC", '', coordinator.data['data']['plugStatus']['plugConnectionState'], None),
+            VwIdSensor(coordinator, api.vin, "Max Charge Current AC", '', coordinator.data['data']['plugStatus']['plugLockState'], None),
+
+            VwIdSensor(coordinator, api.vin, "Remaining Climatisation Time", 'minutes', coordinator.data['data']['climatisationStatus']['remainingClimatisationTime_min'], None),
+            VwIdSensor(coordinator, api.vin, "Climatisation State", '', coordinator.data['data']['climatisationStatus']['climatisationState'], None),
+
+            VwIdSensor(coordinator, api.vin, "Target Temperature C", '°C', coordinator.data['data']['climatisationSettings']['targetTemperature_C'], DEVICE_CLASS_TEMPERATURE),
+            VwIdSensor(coordinator, api.vin, "Target Temperature K", 'K', coordinator.data['data']['climatisationSettings']['targetTemperature_K'], DEVICE_CLASS_TEMPERATURE),             
+            VwIdSensor(coordinator, api.vin, "Target Temperature F", '°F', coordinator.data['data']['climatisationSettings']['targetTemperature_F'], DEVICE_CLASS_TEMPERATURE),  
+            VwIdSensor(coordinator, api.vin, "Unit In Car", '', coordinator.data['data']['climatisationSettings']['unitInCar'], None),
+            VwIdSensor(coordinator, api.vin, "Climatisation Without External Power", '', coordinator.data['data']['climatisationSettings']['climatisationWithoutExternalPower'], None),  
+            VwIdSensor(coordinator, api.vin, "Climatization At Unlock", '', coordinator.data['data']['climatisationSettings']['climatizationAtUnlock'], None),
+            VwIdSensor(coordinator, api.vin, "WindowHeating Enabled", '', coordinator.data['data']['climatisationSettings']['windowHeatingEnabled'], None),  
+            VwIdSensor(coordinator, api.vin, "Zone Front Left Enabled", '', coordinator.data['data']['climatisationSettings']['zoneFrontLeftEnabled'], None),
+            VwIdSensor(coordinator, api.vin, "Zone Front Right Enabled", '', coordinator.data['data']['climatisationSettings']['zoneFrontRightEnabled'], None),  
+        ]
+    )
+
+class VwIdSensor(CoordinatorEntity):
+    def __init__(self, coordinator, vin, name, unit_of_measurement, apiData, device_class):
+        """Pass coordinator to CoordinatorEntity."""
+        super().__init__(coordinator)
+        self._name = name
+        self._state = apiData
         self._available = True
-        self.attrs = {'vin': self.api.vin}
-        #self.attrs: Dict[str, Any] = {ATTR_PATH: self.repo}
-        self.entity_id = ENTITY_ID_FORMAT.format(self.api.vin + '_soc')
+        self.attrs = {'vin': vin}
+        self._entity_id = vin + "_" + name
+        self._device_class = device_class
+        self._unit_of_measurement = unit_of_measurement
         
+        _LOGGER.warn(self._entity_id)
+
     @property
     def name(self) -> str:
         """Return the name of the entity."""
@@ -65,12 +143,7 @@ class VwidSensor(Entity):
     @property
     def unique_id(self) -> str:
         """Return the unique ID of the sensor."""
-        return (self.api.vin + '_soc')
-
-    @property
-    def available(self) -> bool:
-        """Return True if entity is available."""
-        return self._available
+        return self._entity_id
 
     @property
     def state(self):
@@ -78,34 +151,8 @@ class VwidSensor(Entity):
         
     @property
     def device_class(self):
-        return DEVICE_CLASS_BATTERY
+        return self._device_class
         
     @property
     def unit_of_measurement(self):
-        return '%'
-
-    @property
-    def device_state_attributes(self) -> Dict[str, Any]:
-        return self.attrs
-
-    async def async_update(self):
-        data = await self.api.get_status()
-        if (data):
-            # Add state of charge as value
-            self._state = int(data['data']['batteryStatus']['currentSOC_pct'])
-
-            # For now, just flatten tree structure and add two-level deep parameters as attributes
-            for key1 in data['data'].keys():
-                element = data['data'][key1]
-                if isinstance(element, dict):
-                    for key2 in data['data'][key1].keys():
-                        value = data['data'][key1][key2]
-                        if not ((type(value) in [dict, list]) or ('Timestamp' in key2)):
-                            # Convert mix of camelcase and snakecase to just camelcase
-                            key_camelcase = ''.join((x[:1].upper() + x[1:]) for x in key2.split('_'))
-                            self.attrs[key_camelcase] = value
-                                
-            self._available = True
-        else:
-            self._available = False
-            _LOGGER.exception("Error retrieving data")
+        return self._unit_of_measurement
