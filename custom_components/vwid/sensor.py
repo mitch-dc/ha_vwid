@@ -20,7 +20,6 @@ from homeassistant.const import (
     DEVICE_CLASS_BATTERY,
     DEVICE_CLASS_POWER,
     DEVICE_CLASS_TEMPERATURE,
-    DEVICE_CLASS_TIMESTAMP,
 )
 from homeassistant.helpers.typing import (
     ConfigType,
@@ -90,69 +89,30 @@ async def async_setup_entry(
     _LOGGER.warn(coordinator.data['data']['batteryStatus']['currentSOC_pct'])
     async_add_entities(
         [
-            
-
             VwIdSocSensor(coordinator, api.vin),
-            #VwIdSensor(coordinator, api.vin, "State Of Charge", '%', coordinator.data['data']['batteryStatus']['currentSOC_pct'], DEVICE_CLASS_BATTERY),
-            #VwIdSensor(coordinator, api.vin, "Car Captured Timestamp", '', coordinator.data['data']['batteryStatus']['carCapturedTimestamp'], DEVICE_CLASS_TIMESTAMP),            
-            
             VwIdCurrentRangeSensor(coordinator, api.vin),
-            #VwIdSensor(coordinator, api.vin, "Current Range In KM", 'km', coordinator.data['data']['batteryStatus']['cruisingRangeElectric_km'], None),
-            
             VwIdRemainingChargingTimeSensor(coordinator, api.vin),
-            #VwIdSensor(coordinator, api.vin, "Remaining Charging Time", 'minutes', coordinator.data['data']['chargingStatus']['remainingChargingTimeToComplete_min'], None),
-            
             VwIdChargingStateSensor(coordinator, api.vin),
-            #VwIdSensor(coordinator, api.vin, "Charging State", '', coordinator.data['data']['chargingStatus']['chargingState'], None),
-            
             VwIdChargeModeSensor(coordinator, api.vin),
-            #VwIdSensor(coordinator, api.vin, "Charge Mode", '', coordinator.data['data']['chargingStatus']['chargeMode'], None),
-            
             VwIdChargePowerSensor(coordinator, api.vin),
-            #VwIdSensor(coordinator, api.vin, "Charge Power In kW", 'kW', coordinator.data['data']['chargingStatus']['chargePower_kW'], DEVICE_CLASS_POWER),
-            
             VwIdChargeRateSensor(coordinator, api.vin),
-            #VwIdSensor(coordinator, api.vin, "Charge Rate In km/h", 'km/h', coordinator.data['data']['chargingStatus']['chargeRate_kmph'], None),
-
             VwIdMaxChargeCurrentACSensor(coordinator, api.vin),
-            #VwIdSensor(coordinator, api.vin, "Max Charge Current AC", '', coordinator.data['data']['chargingSettings']['maxChargeCurrentAC'], None),
-
             VwIdAutoUnlockPlugWhenChargedSensor(coordinator, api.vin),
-            #VwIdSensor(coordinator, api.vin, "Auto Unlock Plug When Charged", '', coordinator.data['data']['chargingSettings']['autoUnlockPlugWhenCharged'], None),
-            
             VwIdTargetStateOfChargeSensor(coordinator, api.vin),
-            #VwIdSensor(coordinator, api.vin, "Target State Of Charge", '%', coordinator.data['data']['chargingSettings']['targetSOC_pct'], DEVICE_CLASS_BATTERY),
-
             VwIdPlugConnectionStateSensor(coordinator, api.vin),
-            #VwIdSensor(coordinator, api.vin, "Plug Connection State", '', coordinator.data['data']['plugStatus']['plugConnectionState'], None),
-
             VwIdPlugLockStateSensor(coordinator, api.vin),
-            #VwIdSensor(coordinator, api.vin, "Plug Lock State", '', coordinator.data['data']['plugStatus']['plugLockState'], None),
+            VwIdRemainingClimatisationTimeSensor(coordinator, api.vin),
+            VwIdRemainingClimatisationStateSensor(coordinator, api.vin),
 
-
-            #VwIdSensor(coordinator, api.vin, "Remaining Climatisation Time", 'minutes', coordinator.data['data']['climatisationStatus']['remainingClimatisationTime_min'], None),
-            #VwIdSensor(coordinator, api.vin, "Climatisation State", '', coordinator.data['data']['climatisationStatus']['climatisationState'], None),
-
-            #VwIdSensor(coordinator, api.vin, "Target Temperature C", '°C', coordinator.data['data']['climatisationSettings']['targetTemperature_C'], DEVICE_CLASS_TEMPERATURE),
-            #VwIdSensor(coordinator, api.vin, "Target Temperature K", 'K', coordinator.data['data']['climatisationSettings']['targetTemperature_K'], DEVICE_CLASS_TEMPERATURE),             
-            #VwIdSensor(coordinator, api.vin, "Target Temperature F", '°F', coordinator.data['data']['climatisationSettings']['targetTemperature_F'], DEVICE_CLASS_TEMPERATURE),  
-            #VwIdSensor(coordinator, api.vin, "Unit In Car", '', coordinator.data['data']['climatisationSettings']['unitInCar'], None),
-
+            VwIdTargetTemperatureFSensor(coordinator, api.vin),
+            VwIdTargetTemperatureKSensor(coordinator, api.vin),
+            VwIdTargetTemperatureCSensor(coordinator, api.vin),
 
             VwIdClimatisationWithoutExternalPowerSensor(coordinator, api.vin),
-            #VwIdSensor(coordinator, api.vin, "Climatisation Without External Power", '', coordinator.data['data']['climatisationSettings']['climatisationWithoutExternalPower'], None),  
-            
             VwIdClimatizationAtUnlockSensor(coordinator, api.vin),
-            #VwIdSensor(coordinator, api.vin, "Climatization At Unlock", '', coordinator.data['data']['climatisationSettings']['climatizationAtUnlock'], None),
-            
-            
             VwIdWindowHeatingSensor(coordinator, api.vin),
-            #VwIdSensor(coordinator, api.vin, "Window Heating Enabled", '', coordinator.data['data']['climatisationSettings']['windowHeatingEnabled'], None),  
-              
-            
-            
-            #VwIdSensor(coordinator, api.vin, "Zone Front Left Enabled", '', coordinator.data['data']['climatisationSettings']['zoneFrontLeftEnabled'], None),
-            #VwIdSensor(coordinator, api.vin, "Zone Front Right Enabled", '', coordinator.data['data']['climatisationSettings']['zoneFrontRightEnabled'], None),  
+            VwIdZoneFrontLeftEnabledSensor(coordinator, api.vin),
+            VwIdZoneFrontRightEnabledSensor(coordinator, api.vin), 
             
         ],
         True
@@ -611,9 +571,8 @@ class VwIdAutoUnlockPlugWhenChargedSensor(CoordinatorEntity):
         return self._entity_id
 
     @property
-    def state(self):
-        return self.coordinator.data['data']['chargingSettings']['autoUnlockPlugWhenCharged']
-        #return self._state
+    def state(self) -> bool:
+        return self.coordinator.data['data']['chargingSettings']['autoUnlockPlugWhenCharged'] == 'true'
         
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
@@ -838,8 +797,8 @@ class VwIdClimatizationAtUnlockSensor(CoordinatorEntity):
         return self._entity_id
 
     @property
-    def state(self):
-        return self.coordinator.data['data']['climatisationSettings']['climatizationAtUnlock']
+    def state(self) -> bool:
+        return self.coordinator.data['data']['climatisationSettings']['climatizationAtUnlock'] == 'true'
 
     @property
     def device_state_attributes(self) -> Dict[str, Any]:
@@ -858,17 +817,61 @@ class VwIdClimatizationAtUnlockSensor(CoordinatorEntity):
         
         await self.coordinator.async_request_refresh()      
 
-class VwIdSensor(CoordinatorEntity):
-    def __init__(self, coordinator, vin, name, unit_of_measurement, apiData, device_class):
+class VwIdRemainingClimatisationTimeSensor(CoordinatorEntity):
+    def __init__(self, coordinator, vin):
         """Pass coordinator to CoordinatorEntity."""
         super().__init__(coordinator)
-        self._name = 'Volkswagen ID' + ' ' + name
-        self._state = apiData
-        self._available = True
+        self._name = 'Volkswagen ID Remaining Climatisation Time'
         self.attrs = {'vin': vin}
-        self._entity_id = vin + "_" + name
-        self._device_class = device_class
-        self._unit_of_measurement = unit_of_measurement      
+        self._entity_id = vin + "_" + self._name   
+
+    @property
+    def should_poll(self) -> bool:
+        """No need to poll. Coordinator notifies entity of updates."""
+        return False
+
+    @property
+    def name(self) -> str:
+        """Return the name of the entity."""
+        return self._name
+
+    @property
+    def unique_id(self) -> str:
+        """Return the unique ID of the sensor."""
+        return self._entity_id
+
+    @property
+    def unit_of_measurement(self):
+        return 'min'
+
+    @property
+    def state(self):
+        return self.coordinator.data['data']['climatisationStatus']['remainingClimatisationTime_min']
+
+    @property
+    def device_state_attributes(self) -> Dict[str, Any]:
+        return self.attrs
+
+    async def async_added_to_hass(self):
+        """When entity is added to hass."""
+        self.async_on_remove(
+            self.coordinator.async_add_listener(self.async_write_ha_state)
+        )
+
+    async def async_update(self):
+        """Update the entity.
+        Only used by the generic entity update service.
+        """
+        
+        await self.coordinator.async_request_refresh()      
+
+class VwIdRemainingClimatisationStateSensor(CoordinatorEntity):
+    def __init__(self, coordinator, vin):
+        """Pass coordinator to CoordinatorEntity."""
+        super().__init__(coordinator)
+        self._name = 'Volkswagen ID Climatisation State'
+        self.attrs = {'vin': vin}
+        self._entity_id = vin + "_" + self._name   
 
     @property
     def should_poll(self) -> bool:
@@ -887,20 +890,265 @@ class VwIdSensor(CoordinatorEntity):
 
     @property
     def state(self):
-        return self._state
-        
+        return self.coordinator.data['data']['climatisationStatus']['climatisationState']
+
     @property
-    def device_class(self):
-        return self._device_class
-        
-    @property
-    def unit_of_measurement(self):
-        return self._unit_of_measurement
+    def device_state_attributes(self) -> Dict[str, Any]:
+        return self.attrs
+
+    async def async_added_to_hass(self):
+        """When entity is added to hass."""
+        self.async_on_remove(
+            self.coordinator.async_add_listener(self.async_write_ha_state)
+        )
 
     async def async_update(self):
         """Update the entity.
         Only used by the generic entity update service.
         """
+        
+        await self.coordinator.async_request_refresh()
 
-        _LOGGER.warn("Update running")
+class VwIdZoneFrontLeftEnabledSensor(CoordinatorEntity):
+    def __init__(self, coordinator, vin):
+        """Pass coordinator to CoordinatorEntity."""
+        super().__init__(coordinator)
+        self._name = 'Volkswagen ID Zone Front Left Enabled'
+        self.attrs = {'vin': vin}
+        self._entity_id = vin + "_" + self._name   
+
+    @property
+    def should_poll(self) -> bool:
+        """No need to poll. Coordinator notifies entity of updates."""
+        return False
+
+    @property
+    def name(self) -> str:
+        """Return the name of the entity."""
+        return self._name
+
+    @property
+    def unique_id(self) -> str:
+        """Return the unique ID of the sensor."""
+        return self._entity_id
+
+    @property
+    def state(self) -> bool:
+        return self.coordinator.data['data']['climatisationSettings']['zoneFrontLeftEnabled'] == 'true'
+
+    @property
+    def device_state_attributes(self) -> Dict[str, Any]:
+        return self.attrs
+
+    async def async_added_to_hass(self):
+        """When entity is added to hass."""
+        self.async_on_remove(
+            self.coordinator.async_add_listener(self.async_write_ha_state)
+        )
+
+    async def async_update(self):
+        """Update the entity.
+        Only used by the generic entity update service.
+        """
+        
+        await self.coordinator.async_request_refresh()    
+
+class VwIdZoneFrontRightEnabledSensor(CoordinatorEntity):
+    def __init__(self, coordinator, vin):
+        """Pass coordinator to CoordinatorEntity."""
+        super().__init__(coordinator)
+        self._name = 'Volkswagen ID Zone Front Right Enabled'
+        self.attrs = {'vin': vin}
+        self._entity_id = vin + "_" + self._name   
+
+    @property
+    def should_poll(self) -> bool:
+        """No need to poll. Coordinator notifies entity of updates."""
+        return False
+
+    @property
+    def name(self) -> str:
+        """Return the name of the entity."""
+        return self._name
+
+    @property
+    def unique_id(self) -> str:
+        """Return the unique ID of the sensor."""
+        return self._entity_id
+
+    @property
+    def state(self) -> bool:
+        return self.coordinator.data['data']['climatisationSettings']['zoneFrontRightEnabled'] == 'true'
+
+    @property
+    def device_state_attributes(self) -> Dict[str, Any]:
+        return self.attrs
+
+    async def async_added_to_hass(self):
+        """When entity is added to hass."""
+        self.async_on_remove(
+            self.coordinator.async_add_listener(self.async_write_ha_state)
+        )
+
+    async def async_update(self):
+        """Update the entity.
+        Only used by the generic entity update service.
+        """
+        
+        await self.coordinator.async_request_refresh()    
+
+class VwIdTargetTemperatureCSensor(CoordinatorEntity):
+    def __init__(self, coordinator, vin):
+        """Pass coordinator to CoordinatorEntity."""
+        super().__init__(coordinator)
+        self._name = 'Volkswagen ID Target Temperature C'
+        self.attrs = {'vin': vin}
+        self._entity_id = vin + "_" + self._name   
+
+    @property
+    def should_poll(self) -> bool:
+        """No need to poll. Coordinator notifies entity of updates."""
+        return False
+
+    @property
+    def name(self) -> str:
+        """Return the name of the entity."""
+        return self._name
+
+    @property
+    def unique_id(self) -> str:
+        """Return the unique ID of the sensor."""
+        return self._entity_id
+
+    @property
+    def state(self):
+        return self.coordinator.data['data']['climatisationSettings']['targetTemperature_C']
+        #return self._state
+        
+    @property
+    def device_class(self):
+        return DEVICE_CLASS_TEMPERATURE
+
+    @property
+    def device_state_attributes(self) -> Dict[str, Any]:
+        return self.attrs
+
+    @property
+    def unit_of_measurement(self):
+        return '°C'
+
+    async def async_added_to_hass(self):
+        """When entity is added to hass."""
+        self.async_on_remove(
+            self.coordinator.async_add_listener(self.async_write_ha_state)
+        )
+
+    async def async_update(self):
+        """Update the entity.
+        Only used by the generic entity update service.
+        """
+        await self.coordinator.async_request_refresh()
+
+class VwIdTargetTemperatureKSensor(CoordinatorEntity):
+    def __init__(self, coordinator, vin):
+        """Pass coordinator to CoordinatorEntity."""
+        super().__init__(coordinator)
+        self._name = 'Volkswagen ID Target Temperature K'
+        self.attrs = {'vin': vin}
+        self._entity_id = vin + "_" + self._name   
+
+    @property
+    def should_poll(self) -> bool:
+        """No need to poll. Coordinator notifies entity of updates."""
+        return False
+
+    @property
+    def name(self) -> str:
+        """Return the name of the entity."""
+        return self._name
+
+    @property
+    def unique_id(self) -> str:
+        """Return the unique ID of the sensor."""
+        return self._entity_id
+
+    @property
+    def state(self):
+        return self.coordinator.data['data']['climatisationSettings']['targetTemperature_K']
+        #return self._state
+        
+    @property
+    def device_class(self):
+        return DEVICE_CLASS_TEMPERATURE
+
+    @property
+    def device_state_attributes(self) -> Dict[str, Any]:
+        return self.attrs
+
+    @property
+    def unit_of_measurement(self):
+        return 'K'
+
+    async def async_added_to_hass(self):
+        """When entity is added to hass."""
+        self.async_on_remove(
+            self.coordinator.async_add_listener(self.async_write_ha_state)
+        )
+
+    async def async_update(self):
+        """Update the entity.
+        Only used by the generic entity update service.
+        """
+        await self.coordinator.async_request_refresh()
+
+class VwIdTargetTemperatureFSensor(CoordinatorEntity):
+    def __init__(self, coordinator, vin):
+        """Pass coordinator to CoordinatorEntity."""
+        super().__init__(coordinator)
+        self._name = 'Volkswagen ID Target Temperature F'
+        self.attrs = {'vin': vin}
+        self._entity_id = vin + "_" + self._name   
+
+    @property
+    def should_poll(self) -> bool:
+        """No need to poll. Coordinator notifies entity of updates."""
+        return False
+
+    @property
+    def name(self) -> str:
+        """Return the name of the entity."""
+        return self._name
+
+    @property
+    def unique_id(self) -> str:
+        """Return the unique ID of the sensor."""
+        return self._entity_id
+
+    @property
+    def state(self):
+        return self.coordinator.data['data']['climatisationSettings']['targetTemperature_F']
+        #return self._state
+        
+    @property
+    def device_class(self):
+        return DEVICE_CLASS_TEMPERATURE
+
+    @property
+    def device_state_attributes(self) -> Dict[str, Any]:
+        return self.attrs
+
+    @property
+    def unit_of_measurement(self):
+        return '°F'
+
+    async def async_added_to_hass(self):
+        """When entity is added to hass."""
+        self.async_on_remove(
+            self.coordinator.async_add_listener(self.async_write_ha_state)
+        )
+
+    async def async_update(self):
+        """Update the entity.
+        Only used by the generic entity update service.
+        """
         await self.coordinator.async_request_refresh()
