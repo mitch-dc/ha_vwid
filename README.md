@@ -1,3 +1,8 @@
+I'm not working on this integration anymore, moved to a new library:
+https://github.com/mitch-dc/volkswagen_we_connect_id
+
+
+
 # Volkswagen ID component for Home Assistant
 
 forked from skagmo/ha_vwid
